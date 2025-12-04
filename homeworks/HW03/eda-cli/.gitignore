@@ -1,0 +1,57 @@
+# ---------------------------------------------------------
+# .gitignore для проекта EDA CLI (HW03)
+# ---------------------------------------------------------
+
+# Виртуальное окружение проекта
+.venv/
+venv/
+
+# Сгенерированные отчёты
+reports/
+reports_*/
+reports_example/
+reports_custom/
+
+# Python кеш и скомпилированные файлы
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Pytest и тестирование
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Сборка и дистрибуция
+*.egg-info/
+dist/
+build/
+*.egg
+
+# UV package manager
+# Раскомментируй следующую строку, если хочешь исключить uv.lock
+# uv.lock
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Временные файлы
+*.tmp
+*.log
+*.swp
+*.bak
+
+# OS специфичные
+.DS_Store
+Thumbs.db
+
+# Дополнительные датасеты (если добавишь большие файлы)
+data/*.csv
+data/*.xlsx
+!data/example.csv

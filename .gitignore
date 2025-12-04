@@ -5,12 +5,17 @@
 # Системные файлы ОС
 .DS_Store
 Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
 
 # Конфигурации IDE/редакторов
 .vscode/
 .idea/
 *.swp
 *.swo
+*.iml
+*.iws
+.idea_modules/
 
 # Виртуальные окружения Python
 .venv/
@@ -19,31 +24,50 @@ env/
 ENV/
 .conda/
 .venv*/
+*.venv
 
 # Кеши Python и скомпилированные файлы
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+*.dylib
+*.dll
+*.pyd
 
-# Папки и файлы сборки/дистрибуции (если вдруг появятся)
+# Папки и файлы сборки/дистрибуции
 build/
 dist/
 eggs/
 *.egg-info/
+*.egg
 .installed.cfg
+lib/
+lib64/
+parts/
+sdist/
+wheels/
+pip-wheel-metadata/
 
 # Кеши и артефакты тестов
 .pytest_cache/
 .coverage
 .coverage.*
 htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
 
 # Журналы
 *.log
 logs/
+pip-log.txt
 
 # Кеши Jupyter Notebook
 .ipynb_checkpoints
+*.ipynb_checkpoints/
 
 # Файлы окружения и конфигурации с потенциальными секретами
 .env
@@ -51,7 +75,43 @@ logs/
 .env.*
 !.env.example
 
-# Разное
+# UV package manager
+uv.lock
+.uv_cache/
+
+# Отчёты и результаты работы (для всех HW)
+reports/
+reports_*/
+output/
+results/
+*_output/
+*_reports/
+
+# Модели и большие файлы данных (если появятся)
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+*.model
+*.weights
+*.ckpt
+*.pth
+*.joblib
+
+# Временные файлы проектов
 *.tmp
 *.bak
 *.old
+*.orig
+*~
+*.swp
+.~*
+
+# Документация (автогенерируемая)
+docs/_build/
+site/
+
+# файлы Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
