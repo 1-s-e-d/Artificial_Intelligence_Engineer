@@ -1,0 +1,22 @@
+[project]
+name = "eda-cli"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "pandas",
+    "matplotlib",
+    "seaborn",
+    "typer",
+    "rich",
+    "pytest",
+    "fastapi",
+    "uvicorn[standard]",
+    "python-multipart",
+]
+
+[project.scripts]
+eda-cli = "eda_cli.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
