@@ -1,131 +1,80 @@
-"""HTTP API для оценки качества датасетов."""
 from __future__ import annotations
 
 import json
-import logging
 import uuid
+from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 from time import perf_counter
-from typing import Any
+from typing import Any, Dict
 
+import numpy as np
 import pandas as pd
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
-from .core import compute_quality_flags, get_basic_stats, get_missing_info
-
-# ---------- Настройка структурированного логирования (Вариант D) ----------
-
-# Создаем папку для логов
-LOGS_DIR = Path("logs")
-LOGS_DIR.mkdir(exist_ok=True)
-
-# Настраиваем логгер
-logger = logging.getLogger("eda_api")
-logger.setLevel(logging.INFO)
-
-# Хэндлер для файла (JSON формат)
-file_handler = logging.FileHandler(LOGS_DIR / "api.log", encoding="utf-8")
-file_handler.setLevel(logging.INFO)
-
-# Хэндлер для консоли (обычный формат)
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-
-# Форматтеры
-file_formatter = logging.Formatter('%(message)s')
-console_formatter = logging.Formatter('[%(levelname)s] %(message)s')
-
-file_handler.setFormatter(file_formatter)
-console_handler.setFormatter(console_formatter)
-
-logger.addHandler(file_handler)
-logger.addHandler(console_handler)
-
-
-def log_request(
-    endpoint: str,
-    status: int,
-    latency_ms: float,
-    request_id: str,
-    **kwargs
-) -> None:
-    """
-    Логирует запрос в структурированном JSON формате.
-
-    Параметры:
-        endpoint: название эндпоинта
-        status: HTTP статус ответа
-        latency_ms: время обработки в миллисекундах
-        request_id: уникальный ID запроса
-        **kwargs: дополнительные поля (n_rows, n_cols, ok_for_model и т.д.)
-    """
-    log_entry = {
-        "timestamp": datetime.now().isoformat(),
-        "request_id": request_id,
-        "endpoint": endpoint,
-        "status": status,
-        "latency_ms": round(latency_ms, 2),
-        **kwargs
-    }
-
-    # Пишем в файл как JSON
-    logger.info(json.dumps(log_entry, ensure_ascii=False))
-
-
-# ---------- Вспомогательная функция для конвертации типов ----------
-
-def convert_to_native_types(obj: Any) -> Any:
-    """
-    Рекурсивно конвертирует numpy/pandas типы в нативные Python типы.
-    Необходимо для корректной сериализации в JSON через Pydantic.
-    """
-    import numpy as np
-
-    if isinstance(obj, dict):
-        return {key: convert_to_native_types(value) for key, value in obj.items()}
-    elif isinstance(obj, list):
-        return [convert_to_native_types(item) for item in obj]
-    elif isinstance(obj, (np.integer, np.int64, np.int32)):
-        return int(obj)
-    elif isinstance(obj, (np.floating, np.float64, np.float32)):
-        return float(obj)
-    elif isinstance(obj, (np.bool_, np.bool)):
-        return bool(obj)
-    elif isinstance(obj, np.ndarray):
-        return obj.tolist()
-    else:
-        return obj
-
+from .core import compute_quality_flags, missing_table, summarize_dataset
 
 app = FastAPI(
     title="AIE Dataset Quality API",
     version="0.3.0",
     description=(
-        "HTTP-сервис для оценки готовности датасета к обучению модели. "
-        "Использует эвристики качества данных из EDA-ядра. "
-        "Включает структурированное логирование и метрики."
+        "HTTP-сервис-заглушка для оценки готовности датасета к обучению модели. "
+        "Использует простые эвристики качества данных вместо настоящей ML-модели."
     ),
     docs_url="/docs",
     redoc_url=None,
 )
 
-# ---------- Счетчики для метрик (Вариант F) ----------
+# ---------------- Логирование ----------------
 
-request_stats = {
+LOG_DIR = Path(__file__).parent.parent.parent / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+LOG_FILE = LOG_DIR / "api.log"
+
+
+def write_log(log_data: dict[str, Any]) -> None:
+    with LOG_FILE.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(log_data, ensure_ascii=False) + "\n")
+
+
+# ---------------- Метрики сервиса ----------------
+
+metrics_store: dict[str, Any] = {
     "total_requests": 0,
     "total_latency_ms": 0.0,
-    "endpoint_calls": {},
+    "avg_latency_ms": 0.0,
+    "endpoint_calls": defaultdict(int),
     "last_ok_for_model": None,
     "errors": 0,
 }
 
 
+def update_metrics(
+        endpoint: str,
+        latency_ms: float,
+        ok_for_model: bool | None,
+        error: bool = False,
+) -> None:
+    metrics_store["total_requests"] += 1
+    metrics_store["total_latency_ms"] += latency_ms
+    if metrics_store["total_requests"] > 0:
+        metrics_store["avg_latency_ms"] = (
+                metrics_store["total_latency_ms"] / metrics_store["total_requests"]
+        )
+    metrics_store["endpoint_calls"][endpoint] += 1
+    if ok_for_model is not None:
+        metrics_store["last_ok_for_model"] = bool(ok_for_model)
+    if error:
+        metrics_store["errors"] += 1
+
+
 # ---------- Модели запросов/ответов ----------
 
+
 class QualityRequest(BaseModel):
-    """Агрегированные признаки датасета."""
+    """Агрегированные признаки датасета – 'фичи' для заглушки модели."""
+
     n_rows: int = Field(..., ge=0, description="Число строк в датасете")
     n_cols: int = Field(..., ge=0, description="Число колонок")
     max_missing_share: float = Field(
@@ -147,7 +96,8 @@ class QualityRequest(BaseModel):
 
 
 class QualityResponse(BaseModel):
-    """Ответ модели качества датасета."""
+    """Ответ заглушки модели качества датасета."""
+
     ok_for_model: bool = Field(
         ...,
         description="True, если датасет считается достаточно качественным для обучения модели",
@@ -169,38 +119,16 @@ class QualityResponse(BaseModel):
     )
     flags: dict[str, bool] | None = Field(
         default=None,
-        description="Булевы флаги с подробностями",
+        description="Булевы флаги с подробностями (например, too_few_rows, too_many_missing)",
     )
     dataset_shape: dict[str, int] | None = Field(
         default=None,
-        description="Размеры датасета: {'n_rows': ..., 'n_cols': ...}",
+        description="Размеры датасета: {'n_rows': ..., 'n_cols': ...}, если известны",
     )
 
 
-class QualityFlagsResponse(BaseModel):
-    """Ответ с полным набором флагов качества датасета."""
-    flags: dict = Field(
-        ...,
-        description="Полный набор флагов качества (булевы + списки проблемных колонок + метрики)",
-    )
-    quality_score: int = Field(
-        ...,
-        ge=0,
-        le=100,
-        description="Интегральная оценка качества данных (0..100)",
-    )
-    latency_ms: float = Field(
-        ...,
-        ge=0.0,
-        description="Время обработки запроса на сервере, миллисекунды",
-    )
-    dataset_shape: dict[str, int] = Field(
-        ...,
-        description="Размеры датасета: {'n_rows': ..., 'n_cols': ...}",
-    )
+# ---------- Системные эндпоинты ----------
 
-
-# ---------- Системный эндпоинт ----------
 
 @app.get("/health", tags=["system"])
 def health() -> dict[str, str]:
@@ -212,7 +140,27 @@ def health() -> dict[str, str]:
     }
 
 
+@app.get("/metrics", tags=["system"])
+def get_metrics() -> Dict[str, Any]:
+    """
+    Метрики работы сервиса:
+    - total_requests
+    - avg_latency_ms
+    - endpoint_calls
+    - last_ok_for_model
+    - errors
+    """
+    return {
+        "total_requests": metrics_store["total_requests"],
+        "avg_latency_ms": round(float(metrics_store["avg_latency_ms"]), 2),
+        "endpoint_calls": dict(metrics_store["endpoint_calls"]),
+        "last_ok_for_model": metrics_store["last_ok_for_model"],
+        "errors": metrics_store["errors"],
+    }
+
+
 # ---------- Заглушка /quality по агрегированным признакам ----------
+
 
 @app.post("/quality", response_model=QualityResponse, tags=["quality"])
 def quality(req: QualityRequest) -> QualityResponse:
@@ -220,12 +168,8 @@ def quality(req: QualityRequest) -> QualityResponse:
     Эндпоинт-заглушка, который принимает агрегированные признаки датасета
     и возвращает эвристическую оценку качества.
     """
-    request_id = str(uuid.uuid4())
     start = perf_counter()
-
-    # Обновляем статистику
-    request_stats["total_requests"] += 1
-    request_stats["endpoint_calls"]["quality"] = request_stats["endpoint_calls"].get("quality", 0) + 1
+    request_id = str(uuid.uuid4())
 
     # Базовый скор от 0 до 1
     score = 1.0
@@ -252,17 +196,14 @@ def quality(req: QualityRequest) -> QualityResponse:
 
     # Простое решение "ок / не ок"
     ok_for_model = score >= 0.7
-
     if ok_for_model:
         message = "Данных достаточно, модель можно обучать (по текущим эвристикам)."
     else:
         message = "Качество данных недостаточно, требуется доработка (по текущим эвристикам)."
 
     latency_ms = (perf_counter() - start) * 1000.0
-    request_stats["total_latency_ms"] += latency_ms
-    request_stats["last_ok_for_model"] = ok_for_model
 
-    # Флаги для последующего логирования/аналитики
+    # Флаги
     flags = {
         "too_few_rows": req.n_rows < 1000,
         "too_many_columns": req.n_cols > 100,
@@ -271,17 +212,25 @@ def quality(req: QualityRequest) -> QualityResponse:
         "no_categorical_columns": req.categorical_cols == 0,
     }
 
-    # Структурированное логирование
-    log_request(
-        endpoint="quality",
-        status=200,
-        latency_ms=latency_ms,
-        request_id=request_id,
-        n_rows=req.n_rows,
-        n_cols=req.n_cols,
-        ok_for_model=ok_for_model,
-        quality_score=score,
+    print(
+        f"[quality] n_rows={req.n_rows} n_cols={req.n_cols} "
+        f"max_missing_share={req.max_missing_share:.3f} "
+        f"score={score:.3f} latency_ms={latency_ms:.1f} ms"
     )
+
+    # Логирование
+    write_log({
+        "timestamp": datetime.now().isoformat(),
+        "request_id": request_id,
+        "endpoint": "quality",
+        "status": 200,
+        "latency_ms": round(latency_ms, 2),
+        "n_rows": req.n_rows,
+        "n_cols": req.n_cols,
+        "quality_score": int(round(score * 100)),
+    })
+
+    update_metrics("quality", latency_ms, ok_for_model)
 
     return QualityResponse(
         ok_for_model=ok_for_model,
@@ -293,7 +242,8 @@ def quality(req: QualityRequest) -> QualityResponse:
     )
 
 
-# ---------- /quality-from-csv: реальный CSV через EDA-логику ----------
+# ---------- /quality-from-csv: реальный CSV через нашу EDA-логику ----------
+
 
 @app.post(
     "/quality-from-csv",
@@ -304,97 +254,100 @@ def quality(req: QualityRequest) -> QualityResponse:
 async def quality_from_csv(file: UploadFile = File(...)) -> QualityResponse:
     """
     Эндпоинт, который принимает CSV-файл, запускает EDA-ядро
+    (summarize_dataset + missing_table + compute_quality_flags)
     и возвращает оценку качества данных.
     """
-    request_id = str(uuid.uuid4())
     start = perf_counter()
+    request_id = str(uuid.uuid4())
 
-    # Обновляем статистику
-    request_stats["total_requests"] += 1
-    request_stats["endpoint_calls"]["quality-from-csv"] = request_stats["endpoint_calls"].get("quality-from-csv", 0) + 1
-
-    # Проверка типа файла
-    if file.content_type not in ("text/csv", "application/vnd.ms-excel", "application/octet-stream"):
-        request_stats["errors"] += 1
-        log_request(
-            endpoint="quality-from-csv",
-            status=400,
-            latency_ms=(perf_counter() - start) * 1000.0,
-            request_id=request_id,
-            error="Invalid content type",
+    if file.content_type not in (
+            "text/csv",
+            "application/vnd.ms-excel",
+            "application/octet-stream",
+    ):
+        update_metrics("quality-from-csv", 0.0, None, error=True)
+        raise HTTPException(
+            status_code=400,
+            detail="Ожидается CSV-файл (content-type text/csv).",
         )
-        raise HTTPException(status_code=400, detail="Ожидается CSV-файл (content-type text/csv).")
 
     try:
-        # Читаем CSV
         df = pd.read_csv(file.file)
-    except Exception as exc:
-        request_stats["errors"] += 1
-        latency_ms = (perf_counter() - start) * 1000.0
-        log_request(
-            endpoint="quality-from-csv",
-            status=400,
-            latency_ms=latency_ms,
-            request_id=request_id,
-            error=str(exc),
+    except Exception as exc:  # noqa: BLE001
+        update_metrics("quality-from-csv", 0.0, None, error=True)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Не удалось прочитать CSV: {exc}",
         )
-        raise HTTPException(status_code=400, detail=f"Не удалось прочитать CSV: {exc}")
 
     if df.empty:
-        request_stats["errors"] += 1
-        log_request(
-            endpoint="quality-from-csv",
-            status=400,
-            latency_ms=(perf_counter() - start) * 1000.0,
-            request_id=request_id,
-            error="Empty DataFrame",
+        update_metrics("quality-from-csv", 0.0, None, error=True)
+        raise HTTPException(
+            status_code=400,
+            detail="CSV-файл не содержит данных (пустой DataFrame).",
         )
-        raise HTTPException(status_code=400, detail="CSV-файл не содержит данных (пустой DataFrame).")
 
-    # Используем EDA-ядро из HW03
-    stats = get_basic_stats(df)
-    quality_flags = compute_quality_flags(df)
+    # Используем EDA-ядро из S03
+    summary = summarize_dataset(df)
+    missing_df = missing_table(df)
+    flags_all = compute_quality_flags(df)
 
-    # Качественный скор из compute_quality_flags (0-100), нормируем в [0,1]
-    score = quality_flags.get("quality_score", 0) / 100.0
-    score = max(0.0, min(1.0, score))
+    # compute_quality_flags возвращает score в диапазоне 0-100
+    score_0_100 = int(flags_all.get("quality_score", 0))
+    score_0_100 = max(0, min(100, score_0_100))
+
+    # Для QualityResponse нужен диапазон 0.0-1.0
+    score = score_0_100 / 100.0
 
     ok_for_model = score >= 0.7
-
     if ok_for_model:
-        message = "CSV выглядит достаточно качественным для обучения модели (по текущим эвристикам)."
+        message = (
+            "CSV выглядит достаточно качественным для обучения модели "
+            "(по текущим эвристикам)."
+        )
     else:
-        message = "CSV требует доработки перед обучением модели (по текущим эвристикам)."
+        message = (
+            "CSV требует доработки перед обучением модели "
+            "(по текущим эвристикам)."
+        )
 
     latency_ms = (perf_counter() - start) * 1000.0
-    request_stats["total_latency_ms"] += latency_ms
-    request_stats["last_ok_for_model"] = ok_for_model
 
-    # Собираем булевы флаги из quality_flags
+    # Оставляем только булевы флаги для компактности
     flags_bool: dict[str, bool] = {
-        "has_high_missing": bool(quality_flags.get("has_high_missing", False)),
-        "has_duplicates": bool(quality_flags.get("has_duplicates", False)),
-        "has_constant_columns": bool(quality_flags.get("has_constant_columns", False)),
-        "has_high_cardinality_categoricals": bool(quality_flags.get("has_high_cardinality_categoricals", False)),
-        "has_many_zero_values": bool(quality_flags.get("has_many_zero_values", False)),
+        key: bool(value)
+        for key, value in flags_all.items()
+        if isinstance(value, bool)
     }
 
     # Размеры датасета
-    n_rows = stats["n_rows"]
-    n_cols = stats["n_cols"]
+    try:
+        n_rows = int(getattr(summary, "n_rows"))
+        n_cols = int(getattr(summary, "n_cols"))
+    except AttributeError:
+        n_rows = int(df.shape[0])
+        n_cols = int(df.shape[1])
 
-    # Структурированное логирование
-    log_request(
-        endpoint="quality-from-csv",
-        status=200,
-        latency_ms=latency_ms,
-        request_id=request_id,
-        filename=file.filename,
-        n_rows=n_rows,
-        n_cols=n_cols,
-        ok_for_model=ok_for_model,
-        quality_score=score,
+    print(
+        f"[quality-from-csv] filename={file.filename!r} "
+        f"n_rows={n_rows} n_cols={n_cols} score={score:.3f} "
+        f"latency_ms={latency_ms:.1f} ms"
     )
+
+    # Логирование
+    write_log({
+        "timestamp": datetime.now().isoformat(),
+        "request_id": request_id,
+        "endpoint": "quality-from-csv",
+        "status": 200,
+        "latency_ms": round(latency_ms, 2),
+        "filename": file.filename,
+        "n_rows": n_rows,
+        "n_cols": n_cols,
+        "quality_score": score_0_100,
+    })
+
+    update_metrics("quality-from-csv", latency_ms, ok_for_model)
 
     return QualityResponse(
         ok_for_model=ok_for_model,
@@ -406,129 +359,152 @@ async def quality_from_csv(file: UploadFile = File(...)) -> QualityResponse:
     )
 
 
-# ---------- Новый эндпоинт для HW04: полные флаги качества ----------
+# ---------- /quality-flags-from-csv: полный набор флагов ----------
+
 
 @app.post(
     "/quality-flags-from-csv",
-    response_model=QualityFlagsResponse,
     tags=["quality"],
-    summary="Получить полный набор флагов качества из CSV-файла (HW04)",
+    summary="Полный набор флагов качества по CSV-файлу",
 )
-async def quality_flags_from_csv(file: UploadFile = File(...)) -> QualityFlagsResponse:
+async def quality_flags_from_csv(
+        file: UploadFile = File(...),
+) -> Dict[str, Any]:
     """
-    Эндпоинт для получения полного набора флагов качества датасета.
-
-    Возвращает все эвристики из HW03:
-    - has_high_missing: есть ли колонки с высокой долей пропусков
-    - has_duplicates: есть ли дубликаты строк
-    - has_constant_columns: есть ли константные колонки
-    - has_high_cardinality_categoricals: есть ли категориальные колонки с высокой кардинальностью
-    - has_many_zero_values: есть ли числовые колонки с большим количеством нулей
-
-    А также списки проблемных колонок и дополнительные метрики.
+    Эндпоинт, который принимает CSV-файл и возвращает полный набор
+    флагов качества датасета:
+      - high_missing_columns
+      - duplicate_count
+      - constant_columns
+      - high_cardinality_columns
+      - high_zero_columns
+      - zero_shares
+    а также интегральный quality_score и размеры датасета.
     """
-    request_id = str(uuid.uuid4())
     start = perf_counter()
+    request_id = str(uuid.uuid4())
 
-    # Обновляем статистику
-    request_stats["total_requests"] += 1
-    request_stats["endpoint_calls"]["quality-flags-from-csv"] = request_stats["endpoint_calls"].get("quality-flags-from-csv", 0) + 1
-
-    # Проверка типа файла
-    if file.content_type not in ("text/csv", "application/vnd.ms-excel", "application/octet-stream"):
-        request_stats["errors"] += 1
-        log_request(
-            endpoint="quality-flags-from-csv",
-            status=400,
-            latency_ms=(perf_counter() - start) * 1000.0,
-            request_id=request_id,
-            error="Invalid content type",
+    if file.content_type not in (
+            "text/csv",
+            "application/vnd.ms-excel",
+            "application/octet-stream",
+    ):
+        update_metrics("quality-flags-from-csv", 0.0, None, error=True)
+        raise HTTPException(
+            status_code=400,
+            detail="Ожидается CSV-файл (content-type text/csv).",
         )
-        raise HTTPException(status_code=400, detail="Ожидается CSV-файл (content-type text/csv).")
 
     try:
-        # Читаем CSV
         df = pd.read_csv(file.file)
-    except Exception as exc:
-        request_stats["errors"] += 1
-        latency_ms = (perf_counter() - start) * 1000.0
-        log_request(
-            endpoint="quality-flags-from-csv",
-            status=400,
-            latency_ms=latency_ms,
-            request_id=request_id,
-            error=str(exc),
+    except Exception as exc:  # noqa: BLE001
+        update_metrics("quality-flags-from-csv", 0.0, None, error=True)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Не удалось прочитать CSV: {exc}",
         )
-        raise HTTPException(status_code=400, detail=f"Не удалось прочитать CSV: {exc}")
 
     if df.empty:
-        request_stats["errors"] += 1
-        log_request(
-            endpoint="quality-flags-from-csv",
-            status=400,
-            latency_ms=(perf_counter() - start) * 1000.0,
-            request_id=request_id,
-            error="Empty DataFrame",
+        update_metrics("quality-flags-from-csv", 0.0, None, error=True)
+        raise HTTPException(
+            status_code=400,
+            detail="CSV-файл не содержит данных (пустой DataFrame).",
         )
-        raise HTTPException(status_code=400, detail="CSV-файл не содержит данных (пустой DataFrame).")
 
-    # Получаем все флаги качества из EDA-ядра HW03
-    quality_flags = compute_quality_flags(df)
+    summary = summarize_dataset(df)
+    missing_df = missing_table(df)
+    flags_all = compute_quality_flags(df)
 
-    # Конвертируем numpy типы в нативные Python типы
-    quality_flags = convert_to_native_types(quality_flags)
+    # compute_quality_flags возвращает score в диапазоне 0-100
+    quality_score = int(flags_all.get("quality_score", 0))
+    quality_score = max(0, min(100, quality_score))
 
-    # Извлекаем quality_score
-    quality_score = quality_flags.pop("quality_score", 0)
+    # ---- детальные флаги ----
+
+    # колонки с высокой долей пропусков (порог 30%, как в compute_quality_flags)
+    high_missing_columns: list[str] = []
+    if not missing_df.empty and "missing_percent" in missing_df.columns:
+        for idx, row in missing_df.iterrows():
+            col = row["column"]
+            pct = row["missing_percent"]
+            if pct > 30.0:  # ✅ 30% порог (0.3 * 100)
+                high_missing_columns.append(str(col))
+
+    # дубликаты
+    duplicate_count = int(df.duplicated().sum())
+    has_duplicates = duplicate_count > 0
+
+    # константные колонки
+    constant_columns = [
+        col for col in df.columns if df[col].nunique(dropna=False) <= 1
+    ]
+    has_constant_columns = len(constant_columns) > 0
+
+    # высококардинальные категориальные колонки
+    categorical_cols = df.select_dtypes(include=["object", "category"]).columns
+    high_cardinality_columns = [
+        col for col in categorical_cols if df[col].nunique(dropna=True) > 50
+    ]
+    has_high_cardinality_categoricals = len(high_cardinality_columns) > 0
+
+    # нули по числовым колонкам
+    numeric_cols = df.select_dtypes(include=[np.number]).columns
+    zero_shares: Dict[str, float] = {}
+    high_zero_columns: list[str] = []
+    for col in numeric_cols:
+        share = (
+            float((df[col] == 0).sum()) / float(len(df))
+            if len(df) > 0
+            else 0.0
+        )
+        zero_shares[str(col)] = share
+        if share > 0.5:
+            high_zero_columns.append(str(col))
+    has_many_zero_values = len(high_zero_columns) > 0
 
     latency_ms = (perf_counter() - start) * 1000.0
-    request_stats["total_latency_ms"] += latency_ms
+    n_rows, n_cols = int(df.shape[0]), int(df.shape[1])
 
-    # Размеры датасета
-    n_rows, n_cols = df.shape
+    flags: Dict[str, Any] = {
+        "has_high_missing": len(high_missing_columns) > 0,
+        "high_missing_columns": high_missing_columns,
+        "has_duplicates": has_duplicates,
+        "duplicate_count": duplicate_count,
+        "has_constant_columns": has_constant_columns,
+        "constant_columns": constant_columns,
+        "has_high_cardinality_categoricals": has_high_cardinality_categoricals,
+        "high_cardinality_columns": high_cardinality_columns,
+        "has_many_zero_values": has_many_zero_values,
+        "high_zero_columns": high_zero_columns,
+        "zero_shares": {k: float(v) for k, v in zero_shares.items()},
+    }
 
-    # Структурированное логирование
-    log_request(
-        endpoint="quality-flags-from-csv",
-        status=200,
-        latency_ms=latency_ms,
-        request_id=request_id,
-        filename=file.filename,
-        n_rows=int(n_rows),
-        n_cols=int(n_cols),
-        quality_score=quality_score,
+    print(
+        f"[quality-flags-from-csv] filename={file.filename!r} "
+        f"n_rows={n_rows} n_cols={n_cols} quality_score={quality_score} "
+        f"latency_ms={latency_ms:.1f} ms"
     )
 
-    return QualityFlagsResponse(
-        flags=quality_flags,
-        quality_score=quality_score,
-        latency_ms=latency_ms,
-        dataset_shape={"n_rows": int(n_rows), "n_cols": int(n_cols)},
-    )
+    # Логирование
+    write_log({
+        "timestamp": datetime.now().isoformat(),
+        "request_id": request_id,
+        "endpoint": "quality-flags-from-csv",
+        "status": 200,
+        "latency_ms": round(latency_ms, 2),
+        "filename": file.filename,
+        "n_rows": n_rows,
+        "n_cols": n_cols,
+        "quality_score": quality_score,
+    })
 
-
-# ---------- Вариант F: Эндпоинт /metrics ----------
-
-@app.get("/metrics", tags=["system"])
-def metrics() -> dict:
-    """
-    Возвращает статистику по работе сервиса.
-
-    Включает:
-    - total_requests: общее количество запросов
-    - avg_latency_ms: среднее время обработки запроса
-    - endpoint_calls: количество вызовов по каждому эндпоинту
-    - last_ok_for_model: последнее значение флага ok_for_model
-    - errors: количество ошибок
-    """
-    avg_latency = 0.0
-    if request_stats["total_requests"] > 0:
-        avg_latency = request_stats["total_latency_ms"] / request_stats["total_requests"]
+    # ok_for_model по порогу 70
+    ok_for_model = quality_score >= 70
+    update_metrics("quality-flags-from-csv", latency_ms, ok_for_model)
 
     return {
-        "total_requests": request_stats["total_requests"],
-        "avg_latency_ms": round(avg_latency, 2),
-        "endpoint_calls": request_stats["endpoint_calls"],
-        "last_ok_for_model": request_stats["last_ok_for_model"],
-        "errors": request_stats["errors"],
+        "flags": flags,
+        "quality_score": quality_score,
+        "latency_ms": latency_ms,
+        "dataset_shape": {"n_rows": n_rows, "n_cols": n_cols},
     }

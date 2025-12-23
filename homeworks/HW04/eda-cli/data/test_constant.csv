@@ -1,0 +1,7 @@
+echo col1,col2,col3,col4 > data\test_constant.csv
+echo 1,SAME,100,200 >> data\test_constant.csv
+echo 2,SAME,110,220 >> data\test_constant.csv
+echo 3,SAME,120,240 >> data\test_constant.csv
+echo 4,SAME,130,260 >> data\test_constant.csv
+echo 5,SAME,140,280 >> data\test_constant.csv
+echo 6,SAME,150,300 >> data\test_constant.csv
