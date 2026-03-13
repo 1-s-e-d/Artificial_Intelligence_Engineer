@@ -1,0 +1,27 @@
+{
+  "dataset": "EMNIST_balanced",
+  "seed": 42,
+  "model_config": {
+    "input_dim": 784,
+    "hidden_dims": [
+      256,
+      128
+    ],
+    "num_classes": 47,
+    "activation": "relu",
+    "dropout_p": 0.3,
+    "use_batchnorm": true
+  },
+  "train_config": {
+    "optimizer": "Adam",
+    "lr": 0.001,
+    "epochs_limit": 50,
+    "early_stopping_patience": 5,
+    "batch_size": 64
+  },
+  "metrics": {
+    "best_val_accuracy": 0.8527354815864022,
+    "best_val_loss": 0.4566364924478801,
+    "test_accuracy": 0.8485685941718873
+  }
+}
