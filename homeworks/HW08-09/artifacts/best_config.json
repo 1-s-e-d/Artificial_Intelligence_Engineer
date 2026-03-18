@@ -15,9 +15,11 @@
   "train_config": {
     "optimizer": "Adam",
     "lr": 0.001,
-    "epochs_limit": 50,
-    "early_stopping_patience": 5,
-    "batch_size": 64
+    "momentum": 0,
+    "weight_decay": 0,
+    "batch_size": 64,
+    "epochs": 50,
+    "early_stopping_patience": 5
   },
   "metrics": {
     "best_val_accuracy": 0.8527354815864022,
