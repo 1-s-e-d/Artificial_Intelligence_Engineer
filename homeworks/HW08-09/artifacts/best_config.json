@@ -1,6 +1,7 @@
 {
   "dataset": "EMNIST_balanced",
   "seed": 42,
+  "fast_mode": false,
   "model_config": {
     "input_dim": 784,
     "hidden_dims": [
@@ -24,6 +25,7 @@
   "metrics": {
     "best_val_accuracy": 0.8527354815864022,
     "best_val_loss": 0.4566364924478801,
-    "test_accuracy": 0.8485685941718873
+    "test_accuracy": 0.8485685941718873,
+    "test_loss": 0.48822422652524344
   }
 }
