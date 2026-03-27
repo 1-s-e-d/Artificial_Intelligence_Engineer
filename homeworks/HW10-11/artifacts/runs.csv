@@ -1,0 +1,7 @@
+experiment_id,task,dataset,seed,model_summary,optimizer,lr,epochs_trained,best_val_accuracy,test_accuracy,precision,recall,mean_iou,notes
+C1,classification,CIFAR100,42,SimpleCNN,Adam,0.001,10,0.3973,0.4063,,,,No augmentations
+C2,classification,CIFAR100,42,SimpleCNN,Adam,0.001,10,0.4275,0.4266,,,,With augmentations
+C3,classification,CIFAR100,42,ResNet18,Adam,0.001,10,0.5852,0.5881,,,,Frozen backbone
+C4,classification,CIFAR100,42,ResNet18,Adam,0.001,10,0.6798,0.6809,,,,Fine-tune layer4+fc
+V1,detection,PascalVOC,42,FasterRCNN,,,0,,,0.85,0.85,0.8873359560966492,threshold=0.3
+V2,detection,PascalVOC,42,FasterRCNN,,,0,,,0.75,0.75,0.871721625328064,threshold=0.7

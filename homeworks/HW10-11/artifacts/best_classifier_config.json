@@ -1,0 +1,11 @@
+{
+    "dataset": "CIFAR100",
+    "model": "ResNet18",
+    "transforms": "ResNet18, fine-tune",
+    "optimizer": "Adam",
+    "lr": 0.001,
+    "epochs": 10,
+    "seed": 42,
+    "best_val_accuracy": 0.6798,
+    "test_accuracy": 0.6809
+}
