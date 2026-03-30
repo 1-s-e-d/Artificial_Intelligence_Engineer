@@ -1,0 +1,5 @@
+experiment_id,task,dataset,seed,split_summary,window_size,horizon,model_summary,features_summary,scaler,optimizer,lr,epochs_trained,best_val_mae,best_val_rmse,best_val_mape,test_mae,test_rmse,test_mape,notes
+B1,forecasting,S12-hw-dataset.csv,42,"Train:1722,Val:861,Test:862",-,1,Naive Last,None,-,-,0.0,0,6.4158072009291525,8.089288288682855,4.546075559436306,,,,Baseline 1
+B2,forecasting,S12-hw-dataset.csv,42,"Train:1722,Val:861,Test:862",-,1,Moving Average,None,-,-,0.0,0,12.67895636303302,15.131408300959711,9.201860230379731,,,,Baseline 2
+B3,forecasting,S12-hw-dataset.csv,42,"Train:1722,Val:861,Test:862",-,1,Ridge,"Lag, Rolling, Calendar",StandardScaler,-,0.0,0,6.09608071293133,7.639038899300981,4.259035955260685,6.067300093885545,7.748348105806456,3.9335229879997087,Baseline 3
+R1,forecasting,S12-hw-dataset.csv,42,"Train:1694,Val:847,Test:848",14,1,GRU,"Lag, Rolling, Calendar (scaled)",StandardScaler,Adam,0.001,50,6.902388188205616,8.802605125016006,4.665928465417089,,,,Deep Learning
