@@ -1,0 +1,6 @@
+Python поддерживает несколько видов компрехеншнов для создания коллекций.
+List comprehension: [expr for item in iterable if condition].
+Dict comprehension: {key: value for key, value in items if condition}.
+Set comprehension: {expr for item in iterable}.
+Компрехеншны более читаемы и быстрее эквивалентных циклов for.
+Вложенные компрехеншны: [[j for j in range(i)] for i in range(5)].

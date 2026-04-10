@@ -1,0 +1,6 @@
+Модуль — файл .py с определениями и инструкциями Python.
+Пакет — директория с файлом __init__.py, содержащая модули.
+Импорт: import os, from os import path, import os as operating_system.
+Стандартная библиотека Python содержит сотни модулей.
+Популярные модули stdlib: os, sys, math, json, re, datetime, collections, itertools, functools.
+Сторонние пакеты устанавливаются через pip: pip install package_name.

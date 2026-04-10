@@ -1,0 +1,6 @@
+Виртуальное окружение изолирует зависимости конкретного проекта от системного Python.
+Создание: python -m venv venv (стандартный модуль venv).
+Активация в Linux/Mac: source venv/bin/activate.
+Активация в Windows: venv\Scripts\activate.
+pip install package устанавливает пакет только в активное окружение.
+requirements.txt фиксирует точные версии зависимостей: pip freeze > requirements.txt.

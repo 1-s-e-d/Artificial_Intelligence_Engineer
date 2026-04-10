@@ -1,0 +1,6 @@
+Исключения в Python обрабатываются блоком try/except/else/finally.
+Базовый класс всех исключений — BaseException, для пользовательских — Exception.
+Ключевое слово raise явно вызывает исключение.
+Пользовательские исключения создаются наследованием от Exception.
+Контекстный менеджер with автоматически освобождает ресурсы через __enter__/__exit__.
+Часто используемые исключения: ValueError, TypeError, KeyError, IndexError, FileNotFoundError.
