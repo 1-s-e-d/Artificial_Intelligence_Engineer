@@ -1,0 +1,15 @@
+question,answer,retrieved_sources
+"Кто создал Python и в каком году? (Гвидо ван Россум, ABC, Monty)","На основе документа 'doc_01_history.txt':
+Python был создан Гвидо ван Россумом и впервые выпущен в 1991 году. Разработка началась в конце 1980-х как преемник языка ABC.","['doc_01_history.txt', 'doc_13_virtualenv.txt', 'doc_06_functions.txt']"
+"Чем список отличается от кортежа? (list, tuple, изменяемый, append)","На основе документа 'doc_04_lists_tuples.txt':
+Список (list) — изменяемая упорядоченная коллекция элементов. Кортеж (tuple) — неизменяемая упорядоченная коллекция.","['doc_04_lists_tuples.txt', 'doc_03_types.txt', 'doc_09_generators.txt']"
+"Как работает декоратор в Python? (functools, wraps, @decorator)","На основе документа 'doc_12_decorators.txt':
+Стандартные встроенные декораторы: @staticmethod, @classmethod, @property. Модуль functools предоставляет @lru_cache, @wraps, @cached_property, @total_ordering.","['doc_12_decorators.txt', 'doc_20_dataclasses.txt', 'doc_01_history.txt']"
+"Как используется asyncio в Python? (корутина, async def, await, event loop)","На основе документа 'doc_14_async.txt':
+Асинхронное программирование в Python реализовано через модуль asyncio. Корутина определяется через async def, вызывается через await.","['doc_14_async.txt', 'doc_06_functions.txt', 'doc_01_history.txt']"
+"Как работают регулярные выражения в Python? (re.match, re.findall, re.sub)","На основе документа 'doc_16_regex.txt':
+Модуль re предоставляет поддержку регулярных выражений в Python. Основные функции: re.match(), re.search(), re.findall(), re.sub(), re.split().","['doc_16_regex.txt', 'doc_10_modules.txt', 'doc_01_history.txt']"
+"Что такое dataclass в Python? (@dataclass, __init__, __repr__)","На основе документа 'doc_20_dataclasses.txt':
+Модуль dataclasses введён в Python 3.7 для удобного создания классов данных. Декоратор @dataclass автоматически генерирует методы __init__, __repr__, __eq__.","['doc_20_dataclasses.txt', 'doc_07_oop.txt', 'doc_10_modules.txt']"
+"Как обрабатывать исключения в Python? (try, except, finally, BaseException)","На основе документа 'doc_08_exceptions.txt':
+Исключения в Python обрабатываются блоком try/except/else/finally. Базовый класс всех исключений — BaseException, для пользовательских — Exception.","['doc_08_exceptions.txt', 'doc_01_history.txt', 'doc_15_testing.txt']"

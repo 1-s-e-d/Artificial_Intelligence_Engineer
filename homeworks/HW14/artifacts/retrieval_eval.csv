@@ -1,0 +1,11 @@
+query,expected_source,retrieved_sources,hit_at_k,recall_at_k,rank_of_first_relevant
+история создания Python Гвидо ван Россум,doc_01_history.txt,"['doc_01_history.txt', 'doc_01_history.txt', 'doc_01_history.txt']",1,1.0,1
+синтаксис отступов Python,doc_02_syntax.txt,"['doc_02_syntax.txt', 'doc_02_syntax.txt', 'doc_12_decorators.txt']",1,1.0,1
+типы данных int float str bool,doc_03_types.txt,"['doc_03_types.txt', 'doc_09_generators.txt', 'doc_09_generators.txt']",1,1.0,1
+список и кортеж отличия append,doc_04_lists_tuples.txt,"['doc_04_lists_tuples.txt', 'doc_04_lists_tuples.txt', 'doc_04_lists_tuples.txt']",1,1.0,1
+словарь ключ значение dict Python,doc_05_dicts.txt,"['doc_05_dicts.txt', 'doc_03_types.txt', 'doc_01_history.txt']",1,1.0,1
+функция def return аргументы Python,doc_06_functions.txt,"['doc_06_functions.txt', 'doc_14_async.txt', 'doc_06_functions.txt']",1,1.0,1
+классы объекты наследование Python,doc_07_oop.txt,"['doc_07_oop.txt', 'doc_07_oop.txt', 'doc_07_oop.txt']",1,1.0,1
+обработка исключений try except finally,doc_08_exceptions.txt,"['doc_08_exceptions.txt', 'doc_08_exceptions.txt', 'doc_01_history.txt']",1,1.0,1
+генераторы yield Python,doc_09_generators.txt,"['doc_09_generators.txt', 'doc_09_generators.txt', 'doc_09_generators.txt']",1,1.0,1
+декоратор функция обёртка functools,doc_12_decorators.txt,"['doc_12_decorators.txt', 'doc_12_decorators.txt', 'doc_12_decorators.txt']",1,1.0,1

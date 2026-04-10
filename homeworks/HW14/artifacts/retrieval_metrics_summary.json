@@ -1,0 +1,17 @@
+{
+  "experiment": "top_k comparison",
+  "top_k_1": {
+    "k": 1,
+    "hit_rate": 1.0,
+    "hits": 10,
+    "total": 10
+  },
+  "top_k_3": {
+    "k": 3,
+    "hit_rate": 1.0,
+    "hits": 10,
+    "total": 10
+  },
+  "chosen_k": 3,
+  "reason": "k=3 даёт лучший hit rate при разумном объёме контекста"
+}

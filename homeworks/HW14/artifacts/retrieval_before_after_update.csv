@@ -1,0 +1,7 @@
+query,before_retrieved_sources,after_retrieved_sources,changed
+регулярные выражения re.match Python,"['doc_10_modules.txt', 'doc_10_modules.txt', 'doc_01_history.txt']","['doc_16_regex.txt', 'doc_16_regex.txt', 'doc_16_regex.txt']",1
+работа с JSON сериализация Python,"['doc_14_async.txt', 'doc_10_modules.txt', 'doc_14_async.txt']","['doc_17_json.txt', 'doc_17_json.txt', 'doc_17_json.txt']",1
+генераторы списков list comprehension,"['doc_09_generators.txt', 'doc_09_generators.txt', 'doc_09_generators.txt']","['doc_18_comprehensions.txt', 'doc_09_generators.txt', 'doc_18_comprehensions.txt']",1
+f-строки форматирование Python 3.6,"['doc_05_dicts.txt', 'doc_05_dicts.txt', 'doc_01_history.txt']","['doc_19_fstrings.txt', 'doc_19_fstrings.txt', 'doc_17_json.txt']",1
+dataclass датакласс аннотации типов,"['doc_03_types.txt', 'doc_03_types.txt', 'doc_01_history.txt']","['doc_03_types.txt', 'doc_20_dataclasses.txt', 'doc_03_types.txt']",1
+история создания Python Гвидо ван Россум,"['doc_01_history.txt', 'doc_01_history.txt', 'doc_01_history.txt']","['doc_20_dataclasses.txt', 'doc_18_comprehensions.txt', 'doc_01_history.txt']",1
