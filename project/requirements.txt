@@ -1,0 +1,15 @@
+lightgbm
+optuna
+pandas
+numpy
+scikit-learn
+scipy
+statsmodels
+flask
+openpyxl
+matplotlib
+seaborn
+plotly
+python-dotenv
+psutil
+mapie

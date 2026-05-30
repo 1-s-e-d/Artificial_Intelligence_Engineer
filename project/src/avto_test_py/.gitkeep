@@ -1,0 +1,4 @@
+# avto_test_py/ переехал сюда из корня репозитория.
+# Файлы: tune_allday_gpu.py, tune_workday_gpu.py, tune_nonworkday_gpu.py,
+#         benchmark_device.py, run_specialists_gpu.py, s_config.json (legacy)
+# Актуальный конфиг: project/configs/s_config.json

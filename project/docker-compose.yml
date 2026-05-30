@@ -1,0 +1,15 @@
+services:
+  web:
+    build:
+      context: .         # project/ — контекст сборки
+      dockerfile: Dockerfile
+    ports:
+      - "${HOST_PORT:-5001}:5000"   # хост-порт по умолчанию 5001, можно переопределить через HOST_PORT=XXXX
+    volumes:
+      - ./data:/app/data               # датасет монтируется снаружи
+      - ./configs:/app/configs         # конфиги монтируются снаружи
+      - ./results:/app/results         # результаты тюнинга/прогноза
+    environment:
+      - PYTHONIOENCODING=utf-8
+      - PYTHONUTF8=1
+    restart: unless-stopped

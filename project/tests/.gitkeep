@@ -1,0 +1,3 @@
+# Здесь хранятся pytest-тесты.
+# См. tests/test_smoke.py и tests/test_unit_pipeline.py в корне (legacy).
+# Новые тесты создавай здесь: project/tests/test_*.py

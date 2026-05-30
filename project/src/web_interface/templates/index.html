@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Интерфейс прогнозирования</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+    <style>
+        body { padding-top: 20px; background: #f8f9fa; }
+        #calendar { max-width: 900px; margin: 20px auto; }
+
+        /* ===== Лог-окно ===== */
+        .log-wrapper { position: relative; }
+        .log-window {
+            height: 260px;
+            overflow-y: scroll;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: monospace;
+            font-size: 13px;
+            padding: 10px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            border-radius: 4px;
+            scroll-behavior: smooth;
+        }
+        .log-scroll-btn {
+            display: none;
+            position: absolute;
+            bottom: 8px; right: 18px;
+            background: rgba(80,80,80,.85);
+            color: #fff; border: none;
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-size: 12px;
+            cursor: pointer;
+            z-index: 10;
+        }
+        .log-scroll-btn.visible { display: block; }
+        .task-status { font-size: 13px; color: #555; margin-bottom: 4px; min-height: 20px; }
+
+        #toast {
+            position: fixed;
+            bottom: 24px; right: 24px;
+            z-index: 9999;
+            min-width: 240px; max-width: 380px;
+            background: #323232; color: #fff;
+            padding: 12px 18px;
+            border-radius: 6px;
+            font-size: 14px;
+            box-shadow: 0 4px 16px rgba(0,0,0,.35);
+            opacity: 0; pointer-events: none;
+            transition: opacity .25s ease;
+        }
+        #toast.show { opacity: 1; pointer-events: auto; }
+
+        .fc .fc-daygrid-day-frame {
+            position: relative !important;
+            overflow: hidden !important;
+        }
+
+        .cal-tri-top,
+        .cal-tri-bottom {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .cal-tri-top {
+            clip-path: polygon(0 0, 100% 0, 0 100%);
+            background: transparent;
+        }
+        .cal-tri-top.type-tune          { background: rgba( 21, 101, 192, 0.85); }
+        .cal-tri-top.type-train         { background: rgba(123,  31, 162, 0.80); }
+        .cal-tri-top.type-forecast      { background: rgba( 46, 125,  50, 0.85); }
+        .cal-tri-top.type-forecast-only { background: rgba(165, 214, 167, 0.90); }
+        .cal-tri-top.type-overlap       { background: rgba(198,  40,  40, 0.85); }
+
+        .cal-tri-bottom {
+            clip-path: polygon(100% 0, 100% 100%, 0 100%);
+            background: transparent;
+        }
+        .cal-tri-bottom.workday { background: rgba(144, 202, 249, 0.55); }
+        .cal-tri-bottom.weekend { background: rgba(255, 183,  77, 0.55); }
+
+        .fc .fc-daygrid-day-top,
+        .fc .fc-daygrid-day-events,
+        .fc .fc-daygrid-day-bg {
+            position: relative;
+            z-index: 1;
+        }
+
+        .fc .fc-daygrid-day.day-tune          .fc-daygrid-day-number { color: #0d47a1 !important; font-weight: 700; }
+        .fc .fc-daygrid-day.day-train         .fc-daygrid-day-number { color: #6a1b9a !important; font-weight: 700; }
+        .fc .fc-daygrid-day.day-forecast      .fc-daygrid-day-number { color: #1B5E20 !important; font-weight: 700; }
+        .fc .fc-daygrid-day.day-forecast-only .fc-daygrid-day-number { color: #1B5E20 !important; }
+        .fc .fc-daygrid-day.day-overlap       .fc-daygrid-day-number { color: #b71c1c !important; font-weight: 700; }
+
+        .fc .fc-prevYear-button,
+        .fc .fc-nextYear-button {
+            font-weight: 700;
+            letter-spacing: -1px;
+        }
+
+        #datasetBoundsBtn.active {
+            background-color: #155724 !important;
+            border-color: #155724 !important;
+            color: #fff !important;
+        }
+        #datasetBoundsBtn:not(.active) {
+            background-color: #fff;
+            border-color: #6c757d;
+            color: #495057;
+        }
+
+        .cal-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 8px 0 4px 0;
+            font-size: 13px;
+            align-items: center;
+        }
+        .cal-legend-item { display: flex; align-items: center; gap: 5px; }
+
+        .cal-legend-dot {
+            width: 18px; height: 18px;
+            border-radius: 3px;
+            flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(0,0,0,.12);
+        }
+        .cal-legend-dot .ld-top,
+        .cal-legend-dot .ld-bottom {
+            position: absolute;
+            inset: 0;
+        }
+        .cal-legend-dot .ld-top    { clip-path: polygon(0 0, 100% 0, 0 100%); }
+        .cal-legend-dot .ld-bottom { clip-path: polygon(100% 0, 100% 100%, 0 100%); }
+
+        #shutdownBtn {
+            position: fixed;
+            top: 12px; right: 16px;
+            z-index: 1050;
+        }
+    </style>
+</head>
+<body>
+<div id="toast"></div>
+
+<button class="btn btn-danger btn-sm" id="shutdownBtn" title="Полностью выключить сервер">
+    &#9210; Выключить
+</button>
+
+<div class="modal fade" id="shutdownModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Выключение сервера</h5>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Вы уверены, что хотите <strong>полностью остановить</strong> сервер?</p>
+        <p class="text-muted" style="font-size:13px">Активная задача (тюнинг / прогноз / бенчмарк) будет прервана, Flask-процесс завершится.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Отмена</button>
+        <button type="button" class="btn btn-danger" id="shutdownConfirmBtn">Выключить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container-fluid">
+    <h2 class="mb-4">Управление моделью LightGBM</h2>
+
+    <ul class="nav nav-tabs" id="mainTab" role="tablist">
+        <li class="nav-item"><a class="nav-link active" id="config-tab"   data-toggle="tab" href="#config"   role="tab">Конфигурация</a></li>
+        <li class="nav-item"><a class="nav-link"        id="tune-tab"     data-toggle="tab" href="#tune"     role="tab">Тюнинг</a></li>
+        <li class="nav-item"><a class="nav-link"        id="forecast-tab" data-toggle="tab" href="#forecast" role="tab">Прогноз</a></li>
+    </ul>
+
+    <div class="tab-content mt-3">
+
+        <!-- Конфигурация -->
+        <div class="tab-pane fade show active" id="config" role="tabpanel">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>Параметры датасета</h5>
+                    <div class="form-group">
+                        <label>Путь к данным</label>
+                        <input class="form-control" id="dataset_path" value="data/dataset.xlsx" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Колонка даты</label>
+                        <input class="form-control" id="date_col" value="dateByOurs">
+                    </div>
+                    <div class="form-group">
+                        <label>Целевая колонка</label>
+                        <input class="form-control" id="target_col" value="Ypowerconsumption">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h5>Диапазон тюнинга</h5>
+                    <div class="form-group">
+                        <label>Начало</label>
+                        <input type="date" class="form-control" id="tune_start">
+                    </div>
+                    <div class="form-group">
+                        <label>Конец (включительно)</label>
+                        <input type="date" class="form-control" id="tune_end">
+                    </div>
+                    <div class="form-group">
+                        <label>train_days</label>
+                        <input type="number" class="form-control" id="train_days" value="90">
+                    </div>
+                    <div class="form-group">
+                        <label>max_windows</label>
+                        <input type="number" class="form-control" id="max_windows" value="40">
+                    </div>
+                    <div class="form-group">
+                        <label>window_step_days</label>
+                        <input type="number" class="form-control" id="window_step_days" value="7">
+                    </div>
+                    <div class="form-group">
+                        <label>n_trials</label>
+                        <input type="number" class="form-control" id="n_trials" value="30">
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-2">
+                <div class="col-md-6">
+                    <h5>Настройки прогноза</h5>
+                    <div class="form-group">
+                        <label>Обучение: начало (включительно)</label>
+                        <input type="date" class="form-control" id="forecast_train_start">
+                    </div>
+                    <div class="form-group">
+                        <label>Обучение: конец (включительно)</label>
+                        <input type="date" class="form-control" id="forecast_train_end">
+                    </div>
+                    <div class="form-group">
+                        <label>Прогноз: начало (включительно)</label>
+                        <input type="date" class="form-control" id="forecast_start">
+                    </div>
+                    <div class="form-group">
+                        <label>Прогноз: конец (включительно)</label>
+                        <input type="date" class="form-control" id="forecast_end">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h5>Устройство</h5>
+                    <div class="form-group">
+                        <label>Выбор</label>
+                        <select class="form-control" id="device">
+                            <option value="cpu" selected>CPU</option>
+                            <option value="gpu">GPU</option>
+                        </select>
+                    </div>
+                    <div class="d-flex align-items-center mb-2" style="gap:8px">
+                        <button class="btn btn-outline-secondary btn-sm" id="benchmarkBtn">Бенчмарк устройства</button>
+                        <button class="btn btn-danger btn-sm d-none" id="stopBenchBtn">&#9632; Стоп</button>
+                    </div>
+                    <div id="benchmarkResult" class="mb-2" style="font-size:13px;"></div>
+                    <div class="task-status" id="benchmarkStatus"></div>
+                    <div class="log-wrapper">
+                        <div class="log-window" id="benchmarkLog"></div>
+                        <button class="log-scroll-btn" id="benchmarkScrollBtn">&#8595; вниз</button>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-3">
+                <button class="btn btn-primary" id="saveConfigBtn">Сохранить конфигурацию</button>
+            </div>
+        </div>
+
+        <!-- Тюнинг -->
+        <div class="tab-pane fade" id="tune" role="tabpanel">
+            <p>После сохранения конфигурации запустите подбор гиперпараметров.</p>
+            <div class="d-flex align-items-center mb-2" style="gap:8px">
+                <button class="btn btn-success" id="runTuneBtn">Запустить подбор гиперпараметров</button>
+                <button class="btn btn-danger d-none" id="stopTuneBtn">&#9632; Стоп</button>
+            </div>
+            <div class="task-status" id="tuneStatus"></div>
+            <div class="log-wrapper">
+                <div class="log-window" id="tuneLog"></div>
+                <button class="log-scroll-btn" id="tuneScrollBtn">&#8595; вниз</button>
+            </div>
+        </div>
+
+        <!-- Прогноз -->
+        <div class="tab-pane fade" id="forecast" role="tabpanel">
+            <p>Прогноз использует последние обученные параметры (best_params_allday.json) и выбранное устройство.</p>
+            <div class="d-flex align-items-center mb-2" style="gap:8px">
+                <button class="btn btn-warning" id="runForecastBtn">Запустить прогнозирование</button>
+                <button class="btn btn-danger d-none" id="stopForecastBtn">&#9632; Стоп</button>
+            </div>
+            <div class="task-status" id="forecastStatus"></div>
+            <div class="log-wrapper">
+                <div class="log-window" id="forecastLog"></div>
+                <button class="log-scroll-btn" id="forecastScrollBtn">&#8595; вниз</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Календарь -->
+    <div class="card mt-4">
+        <div class="card-header d-flex align-items-center justify-content-between flex-wrap" style="gap:8px">
+            <span>Календарь данных</span>
+            <div class="cal-legend">
+                <small class="text-muted mr-1">&#8598; тип дня &nbsp;|&nbsp; &#8600; рабочий/нерабочий:</small>
+
+                <div class="cal-legend-item">
+                    <div class="cal-legend-dot">
+                        <div class="ld-top"    style="background:transparent"></div>
+                        <div class="ld-bottom" style="background:rgba(144,202,249,.55)"></div>
+                    </div>
+                    Данные (рабочий)
+                </div>
+
+                <div class="cal-legend-item">
+                    <div class="cal-legend-dot">
+                        <div class="ld-top"    style="background:transparent"></div>
+                        <div class="ld-bottom" style="background:rgba(255,183,77,.55)"></div>
+                    </div>
+                    Данные (нерабочий)
+                </div>
+
+                <div class="cal-legend-item">
+                    <div class="cal-legend-dot">
+                        <div class="ld-top"    style="background:rgba(21,101,192,.85)"></div>
+                        <div class="ld-bottom" style="background:rgba(144,202,249,.55)"></div>
+                    </div>
+                    Тюнинг гиперпараметров
+                </div>
+
+                <div class="cal-legend-item">
+                    <div class="cal-legend-dot">
+                        <div class="ld-top"    style="background:rgba(123,31,162,.80)"></div>
+                        <div class="ld-bottom" style="background:rgba(144,202,249,.55)"></div>
+                    </div>
+                    Подбор весов модели
+                </div>
+
+                <div class="cal-legend-item">
+                    <div class="cal-legend-dot">
+                        <div class="ld-top"    style="background:rgba(46,125,50,.85)"></div>
+                        <div class="ld-bottom" style="background:rgba(144,202,249,.55)"></div>
+                    </div>
+                    Прогноз (с данными)
+                </div>
+
+                <div class="cal-legend-item">
+                    <div class="cal-legend-dot">
+                        <div class="ld-top"    style="background:rgba(165,214,167,.9)"></div>
+                        <div class="ld-bottom" style="background:rgba(144,202,249,.55)"></div>
+                    </div>
+                    Прогноз (без данных)
+                </div>
+
+                <div class="cal-legend-item">
+                    <div class="cal-legend-dot">
+                        <div class="ld-top"    style="background:rgba(198,40,40,.85)"></div>
+                        <div class="ld-bottom" style="background:rgba(144,202,249,.55)"></div>
+                    </div>
+                    Пересечение окон
+                </div>
+            </div>
+            <div class="d-flex flex-wrap align-items-center" style="gap:6px">
+                <button class="btn btn-sm btn-outline-secondary" id="datasetBoundsBtn"
+                        title="Ограничить перемещение календаря диапазоном датасета">
+                    &#128204; Границы датасета: выкл
+                </button>
+            </div>
+        </div>
+        <div class="card-body"><div id='calendar'></div></div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/ru.js'></script>
+<script>
+// ==================== Вспомогательная функция: Date → 'YYYY-MM-DD' ====================
+function dateToStr(d) {
+    var y  = d.getFullYear();
+    var m  = String(d.getMonth() + 1).padStart(2, '0');
+    var dd = String(d.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + dd;
+}
+
+// ==================== Toast ====================
+var _toastTimer = null;
+function toast(msg, ms) {
+    ms = ms || 2800;
+    var el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(function () { el.classList.remove('show'); }, ms);
+}
+
+// ==================== Прокрутка лога ====================
+function initLogScroll(logEl, btnEl) {
+    var state = { userScrolled: false };
+    logEl.addEventListener('scroll', function () {
+        var atBottom = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 32;
+        if (atBottom) {
+            state.userScrolled = false;
+            btnEl.classList.remove('visible');
+        } else {
+            state.userScrolled = true;
+            btnEl.classList.add('visible');
+        }
+    });
+    btnEl.addEventListener('click', function () {
+        logEl.scrollTop = logEl.scrollHeight;
+        state.userScrolled = false;
+        btnEl.classList.remove('visible');
+    });
+    return state;
+}
+
+var scrollStates = {};
+document.addEventListener('DOMContentLoaded', function () {
+    scrollStates.benchmark = initLogScroll(
+        document.getElementById('benchmarkLog'),
+        document.getElementById('benchmarkScrollBtn'));
+    scrollStates.tune = initLogScroll(
+        document.getElementById('tuneLog'),
+        document.getElementById('tuneScrollBtn'));
+    scrollStates.forecast = initLogScroll(
+        document.getElementById('forecastLog'),
+        document.getElementById('forecastScrollBtn'));
+});
+
+function autoScroll(container, scrollState) {
+    if (!scrollState.userScrolled) container.scrollTop = container.scrollHeight;
+}
+
+// ==================== Выключение ====================
+document.getElementById('shutdownBtn').addEventListener('click', function () {
+    $('#shutdownModal').modal('show');
+});
+
+document.getElementById('shutdownConfirmBtn').addEventListener('click', function () {
+    var btn = document.getElementById('shutdownConfirmBtn');
+    btn.disabled = true;
+    btn.textContent = 'Выключение...';
+    fetch('/api/shutdown', { method: 'POST' })
+        .then(function (r) { return r.json(); })
+        .then(function () {
+            $('#shutdownModal').modal('hide');
+            document.body.innerHTML =
+                '<div style="display:flex;align-items:center;justify-content:center;height:100vh;' +
+                'font-family:monospace;font-size:18px;color:#555;">'
+                + '\u2705 Сервер остановлен. Можно закрыть вкладку.</div>';
+        })
+        .catch(function () {
+            btn.disabled = false;
+            btn.textContent = 'Выключить';
+            toast('Ошибка: сервер не ответил');
+        });
+});
+
+// ==================== Календарь ====================
+var calDayMap = {};
+var calendar;
+var datasetBoundsEnabled = false;
+
+var BOTTOM_WORKDAY = 'rgba(144,202,249,0.55)';
+var BOTTOM_WEEKEND = 'rgba(255,183,77,0.55)';
+var TOP_TUNE       = 'rgba(21,101,192,0.85)';
+var TOP_TRAIN      = 'rgba(123,31,162,0.80)';
+var TOP_FORECAST   = 'rgba(46,125,50,0.85)';
+var TOP_FONLY      = 'rgba(165,214,167,0.90)';
+var TOP_OVERLAP    = 'rgba(198,40,40,0.85)';
+
+function getDatasetBounds() {
+    var keys = Object.keys(calDayMap);
+    if (!keys.length) return null;
+    keys.sort();
+    var lastDate = new Date(keys[keys.length - 1]);
+    lastDate.setDate(lastDate.getDate() + 1);
+    return { start: keys[0], end: dateToStr(lastDate) };
+}
+
+function applyDatasetBounds(enabled) {
+    var bounds = enabled ? getDatasetBounds() : null;
+    if (enabled && !bounds) {
+        toast('Данные календаря пусты: ограничение невозможно');
+        return;
+    }
+    calendar.setOption('validRange', bounds || {});
+    if (enabled && bounds) {
+        var cur = calendar.getDate();
+        var lo  = new Date(bounds.start);
+        var hi  = new Date(bounds.end); hi.setDate(hi.getDate() - 1);
+        if (cur < lo) calendar.gotoDate(lo);
+        else if (cur > hi) calendar.gotoDate(hi);
+    }
+}
+
+function updateBoundsBtn() {
+    var btn = document.getElementById('datasetBoundsBtn');
+    if (datasetBoundsEnabled) {
+        btn.classList.add('active');
+        btn.textContent = '\uD83D\uDCCC Границы датасета: вкл';
+    } else {
+        btn.classList.remove('active');
+        btn.textContent = '\uD83D\uDCCC Границы датасета: выкл';
+    }
+}
+
+function topColorForTypes(t) {
+    var hasTune     = t.indexOf('tune')          >= 0;
+    var hasTrain    = t.indexOf('train')         >= 0;
+    var hasForecast = t.indexOf('forecast')      >= 0;
+    var hasFOnly    = t.indexOf('forecast_only') >= 0;
+    var hasFore     = hasForecast || hasFOnly;
+    if ((hasTune && hasTrain) || (hasTune && hasFore) || (hasTrain && hasFore)) return TOP_OVERLAP;
+    if (hasTune)     return TOP_TUNE;
+    if (hasTrain)    return TOP_TRAIN;
+    if (hasForecast) return TOP_FORECAST;
+    if (hasFOnly)    return TOP_FONLY;
+    return null;
+}
+
+function paintCell(frameEl, dateStr) {
+    var old = frameEl.querySelectorAll('.cal-tri-top, .cal-tri-bottom');
+    old.forEach(function(n){ n.parentNode.removeChild(n); });
+    var info = calDayMap[dateStr];
+    if (!info) return;
+    var t = info.types || [];
+    var hasWorkdayInfo = (info.workday === 0 || info.workday === 1);
+    if (!hasWorkdayInfo && !t.length) return;
+    var bot = document.createElement('div');
+    bot.className = 'cal-tri-bottom';
+    bot.style.background = (info.workday === 0) ? BOTTOM_WEEKEND : BOTTOM_WORKDAY;
+    frameEl.insertBefore(bot, frameEl.firstChild);
+    var topColor = topColorForTypes(t);
+    if (topColor) {
+        var top = document.createElement('div');
+        top.className = 'cal-tri-top';
+        top.style.background = topColor;
+        frameEl.insertBefore(top, frameEl.firstChild);
+    }
+}
+
+function classesForDay(dateStr) {
+    var info = calDayMap[dateStr];
+    if (!info) return [];
+    var t = info.types || [];
+    var hasTune     = t.indexOf('tune')          >= 0;
+    var hasTrain    = t.indexOf('train')         >= 0;
+    var hasForecast = t.indexOf('forecast')      >= 0;
+    var hasFOnly    = t.indexOf('forecast_only') >= 0;
+    var hasFore     = hasForecast || hasFOnly;
+    var cls = [];
+    if ((hasTune && hasTrain) || (hasTune && hasFore) || (hasTrain && hasFore)) cls.push('day-overlap');
+    else if (hasTune)      cls.push('day-tune');
+    else if (hasTrain)     cls.push('day-train');
+    else if (hasForecast)  cls.push('day-forecast');
+    else if (hasFOnly)     cls.push('day-forecast-only');
+    return cls;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    fetch('/api/calendar_events').then(function (r) { return r.json(); }).then(function (data) {
+        data.forEach(function (ev) {
+            calDayMap[ev.start] = { types: ev.types, workday: ev.workday };
+        });
+        buildCalendar();
+    }).catch(function () { buildCalendar(); });
+    loadConfigAndFill();
+
+    document.getElementById('datasetBoundsBtn').addEventListener('click', function () {
+        datasetBoundsEnabled = !datasetBoundsEnabled;
+        updateBoundsBtn();
+        applyDatasetBounds(datasetBoundsEnabled);
+        toast(datasetBoundsEnabled
+            ? 'Границы датасета включены — навигация ограничена'
+            : 'Границы датасета выключены — свободная навигация');
+    });
+});
+
+function buildCalendar() {
+    calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+        initialView: 'dayGridMonth',
+        locale: 'ru',
+        selectable: true,
+        selectMirror: true,
+        events: [],
+        validRange: {},
+        customButtons: {
+            prevYear: {
+                text: '\u00AB\u00AB',
+                hint: 'Предыдущий год',
+                click: function () { var d = calendar.getDate(); d.setFullYear(d.getFullYear() - 1); calendar.gotoDate(d); }
+            },
+            nextYear: {
+                text: '\u00BB\u00BB',
+                hint: 'Следующий год',
+                click: function () { var d = calendar.getDate(); d.setFullYear(d.getFullYear() + 1); calendar.gotoDate(d); }
+            }
+        },
+        headerToolbar: { left: 'prevYear,prev,next,nextYear today', center: 'title', right: 'dayGridMonth,dayGridWeek' },
+        dayCellClassNames: function (arg) { return classesForDay(dateToStr(arg.date)); },
+        dayCellDidMount: function (arg) {
+            var frame = arg.el.querySelector('.fc-daygrid-day-frame');
+            if (frame) paintCell(frame, dateToStr(arg.date));
+        },
+        select: function (info) {
+            calendar.unselect();
+            toast('Выделен диапазон: ' + info.startStr + ' \u2013 ' + info.endStr);
+        },
+        dateClick: function (info) {
+            var ev = calDayMap[info.dateStr];
+            if (!ev) return;
+            var labels = { data: 'Данные', tune: 'Тюнинг гиперпараметров', train: 'Подбор весов модели', forecast: 'Прогноз (с данными)', forecast_only: 'Прогноз (без данных)' };
+            var typeStr = (ev.types||[]).map(function(t){ return labels[t]||t; }).join(', ');
+            var wdStr = ev.workday===1?'рабочий':ev.workday===0?'нерабочий':'';
+            toast(info.dateStr + ' — ' + typeStr + (wdStr?' ('+wdStr+')':''));
+        }
+    });
+    calendar.render();
+    if (datasetBoundsEnabled) applyDatasetBounds(true);
+}
+
+// ==================== Загрузка конфига ====================
+function loadConfigAndFill() {
+    fetch('/api/config').then(r => r.json()).then(function (cfg) {
+        document.getElementById('tune_start').value           = cfg.tune.tune_start;
+        document.getElementById('tune_end').value             = cfg.tune.tune_end;
+        document.getElementById('train_days').value           = cfg.model.train_days;
+        document.getElementById('max_windows').value          = cfg.model.max_windows;
+        document.getElementById('window_step_days').value     = cfg.model.window_step_days || 7;
+        document.getElementById('n_trials').value             = cfg.tune.n_trials;
+        document.getElementById('forecast_train_start').value = cfg.forecast.train_start;
+        document.getElementById('forecast_train_end').value   = cfg.forecast.train_end;
+        document.getElementById('forecast_start').value       = cfg.forecast.forecast_start;
+        document.getElementById('forecast_end').value         = cfg.forecast.forecast_end;
+        return fetch('/api/device_config');
+    }).then(r => r.json()).then(function (dcfg) {
+        document.getElementById('device').value = dcfg.device || 'cpu';
+        showBenchmarkResult(dcfg);
+    }).catch(console.error);
+}
+
+function showBenchmarkResult(dcfg) {
+    var el = document.getElementById('benchmarkResult');
+    if (!dcfg || !dcfg.device) { el.innerHTML = ''; return; }
+    var dev   = dcfg.device.toUpperCase();
+    var times = dcfg.benchmark_times_sec || {};
+    var cpuS  = times.cpu  ? times.cpu.toFixed(2)  + ' с' : '—';
+    var gpuS  = (times.gpu && times.gpu !== Infinity) ? times.gpu.toFixed(2) + ' с' : 'недоступен';
+    var badge = dev === 'GPU'
+        ? '<span class="badge badge-success">Рекомендуется GPU</span>'
+        : '<span class="badge badge-primary">Рекомендуется CPU</span>';
+    el.innerHTML = badge + '&nbsp; CPU: ' + cpuS + ' &nbsp;|&nbsp; GPU: ' + gpuS;
+}
+
+// ==================== Сохранение конфига ====================
+document.getElementById('saveConfigBtn').addEventListener('click', function () {
+    var newCfg = {
+        data: {
+            dataset_path: document.getElementById('dataset_path').value,
+            date_col:     document.getElementById('date_col').value,
+            target_col:   document.getElementById('target_col').value
+        },
+        tune: {
+            tune_start: document.getElementById('tune_start').value,
+            tune_end:   document.getElementById('tune_end').value,
+            n_trials:   parseInt(document.getElementById('n_trials').value),
+            metric_mape_weight: 0.6, metric_r2_weight: 0.4,
+            output_dir: 'avto_test_py/results/allday'
+        },
+        model: {
+            name: 'allday',
+            train_days:       parseInt(document.getElementById('train_days').value),
+            max_windows:      parseInt(document.getElementById('max_windows').value),
+            window_step_days: parseInt(document.getElementById('window_step_days').value),
+            lgbm_search_space: {
+                num_leaves:        {type:'int',  low:64,   high:255},
+                n_estimators:      {type:'int',  low:400,  high:2000},
+                learning_rate:     {type:'float',low:0.003,high:0.05,log:true},
+                min_child_samples: {type:'int',  low:10,   high:60},
+                subsample:         {type:'float',low:0.6,  high:1.0},
+                colsample_bytree:  {type:'float',low:0.6,  high:1.0},
+                reg_alpha:         {type:'float',low:0.0,  high:1.0},
+                reg_lambda:        {type:'float',low:0.0,  high:3.0}
+            }
+        },
+        forecast: {
+            train_start:    document.getElementById('forecast_train_start').value,
+            train_end:      document.getElementById('forecast_train_end').value,
+            forecast_start: document.getElementById('forecast_start').value,
+            forecast_end:   document.getElementById('forecast_end').value,
+            output_dir: 'test_results/test_results_allday_web'
+        }
+    };
+    fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(newCfg) })
+    .then(r => r.json()).then(function (d) {
+        if (d.status !== 'ok') { toast('Ошибка сохранения конфига'); return Promise.reject(); }
+        var dcfg = { device: document.getElementById('device').value, n_jobs: 1,
+                     num_threads: document.getElementById('device').value === 'cpu' ? -1 : 1 };
+        return fetch('/api/device_config', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(dcfg) });
+    }).then(function (r) {
+        if (!r) return;
+        toast('Конфигурация сохранена \u2713');
+        reloadCalendarColors();
+    }).catch(console.error);
+});
+
+function reloadCalendarColors() {
+    fetch('/api/calendar_events').then(function (r) { return r.json(); }).then(function (data) {
+        calDayMap = {};
+        data.forEach(function (ev) {
+            calDayMap[ev.start] = { types: ev.types, workday: ev.workday };
+        });
+        calendar.destroy();
+        document.getElementById('calendar').innerHTML = '';
+        buildCalendar();
+        toast('Календарь обновлён \u2713');
+    });
+}
+
+// ==================== Лог-хелперы ====================
+function appendLog(container, text, scrollState) {
+    container.textContent += text + '\n';
+    autoScroll(container, scrollState);
+}
+
+function updateProgress(container, text, stateRef, scrollState) {
+    if (stateRef.progressLineStart >= 0) {
+        const lineEnd = container.textContent.indexOf('\n', stateRef.progressLineStart);
+        const lineLength = (lineEnd === -1 ? container.textContent.length : lineEnd) - stateRef.progressLineStart;
+        const before = container.textContent.slice(0, stateRef.progressLineStart);
+        const after = container.textContent.slice(stateRef.progressLineStart + lineLength);
+        container.textContent = before + text + '\n' + after;
+    } else {
+        stateRef.progressLineStart = container.textContent.length;
+        container.textContent += text + '\n';
+    }
+    autoScroll(container, scrollState);
+}
+
+// ==================== SSE ====================
+var activeES = null;
+
+function closeActiveES() {
+    if (activeES) {
+        activeES.close();
+        activeES = null;
+    }
+}
+
+function streamLog(taskId, logContainer, statusEl, stopBtn, stateRef, scrollState, onDone) {
+    closeActiveES();
+
+    var es = new EventSource('/api/progress?tid=' + taskId);
+    activeES = es;
+
+    es.addEventListener('progress', function (e) {
+        updateProgress(logContainer, e.data, stateRef, scrollState);
+    });
+
+    es.addEventListener('message', function (e) {
+        if (stateRef.progressLineStart >= 0) {
+            const currentProgressText = logContainer.textContent.slice(stateRef.progressLineStart);
+            const lineEnd = currentProgressText.indexOf('\n');
+            const currentLine = lineEnd === -1 ? currentProgressText : currentProgressText.slice(0, lineEnd);
+            if (currentLine === e.data) {
+                autoScroll(logContainer, scrollState);
+                return;
+            }
+            var before   = logContainer.textContent.slice(0, stateRef.progressLineStart);
+            var progress = logContainer.textContent.slice(stateRef.progressLineStart);
+            var newLine  = e.data + '\n';
+            logContainer.textContent = before + newLine + progress;
+            stateRef.progressLineStart += newLine.length;
+        } else {
+            appendLog(logContainer, e.data, scrollState);
+        }
+        autoScroll(logContainer, scrollState);
+    });
+
+    es.addEventListener('done', function (e) {
+        stateRef.progressLineStart = -1;
+        es.close();
+        if (activeES === es) activeES = null;
+        stopBtn.classList.add('d-none');
+        statusEl.textContent = 'Завершено.';
+        try { if (onDone) onDone(JSON.parse(e.data)); } catch(_){}
+    });
+
+    es.onerror = function () {
+        es.close();
+        if (activeES === es) activeES = null;
+        stopBtn.classList.add('d-none');
+        statusEl.textContent = 'Соединение прервано.';
+    };
+}
+
+// ==================== Тюнинг ====================
+document.getElementById('runTuneBtn').addEventListener('click', function () {
+    var logEl    = document.getElementById('tuneLog');
+    var statusEl = document.getElementById('tuneStatus');
+    var stopBtn  = document.getElementById('stopTuneBtn');
+    logEl.textContent = '';
+    var stateRef = { progressLineStart: -1 };
+    statusEl.textContent = 'Запуск...';
+    fetch('/api/run_tune', { method: 'POST' }).then(r => r.json()).then(function (d) {
+        if (d.status === 'started') {
+            stopBtn.classList.remove('d-none');
+            statusEl.textContent = 'Выполняется...';
+            streamLog(d.task_id, logEl, statusEl, stopBtn, stateRef, scrollStates.tune, null);
+        } else {
+            statusEl.textContent = 'Другая задача уже выполняется.';
+        }
+    });
+});
+document.getElementById('stopTuneBtn').addEventListener('click', function () {
+    fetch('/api/stop', { method: 'POST' }).then(r => r.json()).then(function (d) {
+        document.getElementById('tuneStatus').textContent =
+            d.status === 'stopped' ? 'Задача остановлена.' : 'Нет активной задачи.';
+        document.getElementById('stopTuneBtn').classList.add('d-none');
+    });
+});
+
+// ==================== Прогноз ====================
+document.getElementById('runForecastBtn').addEventListener('click', function () {
+    var logEl    = document.getElementById('forecastLog');
+    var statusEl = document.getElementById('forecastStatus');
+    var stopBtn  = document.getElementById('stopForecastBtn');
+    logEl.textContent = '';
+    var stateRef = { progressLineStart: -1 };
+    statusEl.textContent = 'Запуск...';
+    fetch('/api/run_forecast', { method: 'POST' }).then(r => r.json()).then(function (d) {
+        if (d.status === 'started') {
+            stopBtn.classList.remove('d-none');
+            statusEl.textContent = 'Выполняется...';
+            streamLog(d.task_id, logEl, statusEl, stopBtn, stateRef, scrollStates.forecast, null);
+        } else {
+            statusEl.textContent = 'Другая задача уже выполняется.';
+        }
+    });
+});
+document.getElementById('stopForecastBtn').addEventListener('click', function () {
+    fetch('/api/stop', { method: 'POST' }).then(r => r.json()).then(function (d) {
+        document.getElementById('forecastStatus').textContent =
+            d.status === 'stopped' ? 'Задача остановлена.' : 'Нет активной задачи.';
+        document.getElementById('stopForecastBtn').classList.add('d-none');
+    });
+});
+
+// ==================== Бенчмарк ====================
+document.getElementById('benchmarkBtn').addEventListener('click', function () {
+    var logEl    = document.getElementById('benchmarkLog');
+    var statusEl = document.getElementById('benchmarkStatus');
+    var stopBtn  = document.getElementById('stopBenchBtn');
+    logEl.textContent = '';
+    document.getElementById('benchmarkResult').innerHTML = '';
+    var stateRef = { progressLineStart: -1 };
+    statusEl.textContent = 'Запуск бенчмарка...';
+    fetch('/api/run_benchmark', { method: 'POST' }).then(r => r.json()).then(function (d) {
+        if (d.status === 'started') {
+            stopBtn.classList.remove('d-none');
+            statusEl.textContent = 'Выполняется бенчмарк...';
+            streamLog(d.task_id, logEl, statusEl, stopBtn, stateRef, scrollStates.benchmark, function () {
+                fetch('/api/device_config').then(r => r.json()).then(function (dcfg) {
+                    showBenchmarkResult(dcfg);
+                    document.getElementById('device').value = dcfg.device || 'cpu';
+                    toast('Бенчмарк завершён. Рекомендуется: ' + (dcfg.device || 'cpu').toUpperCase(), 4000);
+                });
+            });
+        } else {
+            statusEl.textContent = 'Другая задача уже выполняется.';
+        }
+    });
+});
+document.getElementById('stopBenchBtn').addEventListener('click', function () {
+    fetch('/api/stop', { method: 'POST' }).then(r => r.json()).then(function (d) {
+        document.getElementById('benchmarkStatus').textContent =
+            d.status === 'stopped' ? 'Бенчмарк остановлен.' : 'Нет активной задачи.';
+        document.getElementById('stopBenchBtn').classList.add('d-none');
+    });
+});
+</script>
+</body>
+</html>

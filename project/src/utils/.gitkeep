@@ -1,0 +1,5 @@
+# utils/ переехал сюда из корня репозитория.
+# Файлы: AnalysisYear.py, ChartByDay.py, IncrementAnalysis.py,
+#         WindowDistributions.py, gpu_test.py,
+#         model_data_preanalysis_diff.py, project_tree.py,
+#         projek_tree_in_detail.py
